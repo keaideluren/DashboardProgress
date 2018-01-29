@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="DashboardProgressbar" >
+        <attr name="dp_startText" format="string" />
+        <attr name="dp_endText" format="string" />
+        <attr name="dp_progressColor" format="color" />
+        <attr name="dp_bgColor" format="color" />
+        <attr name="dp_secondBgColor" format="color" />
+        <attr name="dp_earTextColor" format="color" />
+        <attr name="dp_dialTextColor" format="color" />
+        <attr name="dp_dialColor" format="color" />
+        <attr name="dp_earColor" format="color" />
+        <attr name="dp_indicatorDrawable" format="reference" />
+        <attr name="dp_isShowIndicator" format="boolean" />
+        <attr name="dp_isShowEarText" format="boolean" />
+        <attr name="dp_isShowEar" format="boolean" />
+        <attr name="dp_isShowDialText" format="boolean" />
+        <attr name="dp_isShowBg" format="boolean" />
+        <attr name="dp_isShowSecondBg" format="boolean" />
+        <attr name="dp_isShowDial" format="boolean" />
+        <attr name="dp_duration" format="integer" />
+        <attr name="dp_dialsCount" format="integer" />
+        <attr name="dp_startAngel" format="float" />
+        <attr name="dp_endAngel" format="float" />
+        <attr name="dp_earLength" format="dimension" />
+        <attr name="dp_earWidth" format="dimension" />
+        <attr name="dp_progressWidth" format="dimension" />
+        <attr name="dp_bgWidth" format="dimension" />
+        <attr name="dp_secondBgWidth" format="dimension" />
+        <attr name="dp_dialLength" format="dimension" />
+        <attr name="dp_dialSpace" format="dimension" />
+        <attr name="dp_dialWidth" format="dimension" />
+        <attr name="dp_earTextSize" format="dimension" />
+        <attr name="dp_dialTextSize" format="dimension" />
+        <attr name="dp_indicatorSize" format="dimension" />
+        <attr name="dp_indicatorDraggable" format="boolean" />
+    </declare-styleable>
+</resources>

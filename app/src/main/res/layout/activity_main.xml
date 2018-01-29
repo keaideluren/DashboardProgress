@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.luren.mydashboardprogress.MainActivity">
+
+    <com.luren.dashboardprogressbarlib.DashboardProgressbar
+        android:id="@+id/dpb"
+        android:layout_width="300dp"
+        android:layout_height="300dp"
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        app:dp_bgWidth="5dp"
+        app:dp_dialColor="#333333"
+        app:dp_dialLength="10dp"
+        app:dp_dialSpace="10dp"
+        app:dp_dialWidth="2px"
+        app:dp_dialsCount="20"
+        app:dp_duration="1000"
+        app:dp_earColor="#eeeeee"
+        app:dp_earLength="22dp"
+        app:dp_earTextColor="#333333"
+        app:dp_earTextSize="14sp"
+        app:dp_earWidth="2dp"
+        app:dp_endText="10万"
+        app:dp_indicatorDraggable="true"
+        app:dp_indicatorDrawable="@drawable/aaa"
+        app:dp_indicatorSize="20dp"
+        app:dp_progressWidth="8dp"
+        app:dp_secondBgColor="#eeeeee"
+        app:dp_secondBgWidth="8dp"
+        app:dp_startText="0.0"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/tv_text"
+        android:layout_width="151dp"
+        android:layout_height="150dp"
+        android:layout_marginBottom="32dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginStart="32dp"
+        android:layout_marginTop="32dp"
+        android:gravity="center"
+        app:layout_constraintBottom_toBottomOf="@+id/dpb"
+        app:layout_constraintEnd_toEndOf="@+id/dpb"
+        app:layout_constraintHorizontal_bias="0.515"
+        app:layout_constraintStart_toStartOf="@+id/dpb"
+        app:layout_constraintTop_toTopOf="@+id/dpb"
+        app:layout_constraintVertical_bias="0.472" />
+
+    <Button
+        android:id="@+id/button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
+        android:onClick="onRandom"
+        android:text="点一下随机一个数"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        tools:layout_editor_absoluteY="437dp" />
+
+</android.support.constraint.ConstraintLayout>

@@ -3,8 +3,8 @@ package com.luren.dashboardprogressbarlib;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
+import android.animation.ValueAnimator.AnimatorUpdateListener;
 import android.annotation.SuppressLint;
-import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
@@ -12,28 +12,22 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.graphics.Shader;
 import android.graphics.SweepGradient;
+import android.graphics.Paint.Style;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.ShapeDrawable;
 import android.graphics.drawable.shapes.OvalShape;
-import android.os.Build;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.BounceInterpolator;
 import android.view.animation.OvershootInterpolator;
-
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Created by Administrator 可爱的路人 on 2017/12/18.
- * Email:513421345@qq.com
- * 不考虑多进度的情况
- */
 public class DashboardProgressbar extends View {
-    //必要的工具
     private Paint mProgressPaint;
     private Paint mBgPaint;
     private Paint mSecondBgPaint;
@@ -42,44 +36,39 @@ public class DashboardProgressbar extends View {
     private Paint mTextPaint;
     private Paint mEarPaint;
     private RectF mProgressRect;
-    private OnDataUpdateListener mAnimationListener;//动画回调
-
-
-    //数据 ，内容等
-    private float mProgress;//进度值，这个值控制指针绘制的位置
-    private double mTotalData;//这个
-    private double mCurrentData;//和这个来计算progress的大小
-    private String endText;//终止点的文字
-    private String startText;//起始点的文字
-    private List<String> dialTexts;//刻度文字
-
-    //样式，颜色，大小等
-    private ArrayList<Integer> mProgressColors;//进度条的颜色
-    private int mBgColor;//背景的颜色
-    private Drawable mIndicatorDrawable;//指示点
-    private boolean mIsShowIndicator;//是否绘制进度条指向位置的圆点
+    private DashboardProgressbar.OnDataUpdateListener mAnimationListener;
+    private float mProgress;
+    private double mTotalData;
+    private double mCurrentData;
+    private String endText;
+    private String startText;
+    private List<String> dialTexts;
+    private ArrayList<Integer> mProgressColors;
+    private int mBgColor;
+    private Drawable mIndicatorDrawable;
+    private boolean mIsShowIndicator;
     private boolean mIsShowEarText;
-    private boolean mIsShowEar;//是否绘制起止点的耳朵
-    private boolean mIsShowDial;// 刻度
-    private boolean mIsShowDialText;//刻度的文字
-    private int mDuration;//动画时长
-    private int mDialsCount;//刻度数量
-    private float mStartAngel;//进度的起始角度,弧度制
-    private float mEndAngel;//进度的终止角度，弧度制
-    private float mEarLength;//起止点的耳朵的长度
-    private float mEarWidth;//起止点的耳朵线条宽度
-    private float mProgressWidth;//进度条宽度
-    private float mBgWidth;//进度底色
-    private float mSecondBgWidth;//第二背景宽度
-    private int mSecondBgColor;//第二背景颜色
-    private float mDialLength;//刻度的长度
-    private float mDialSpace;//刻度与圆弧之间的间距
-    private float mDialWidth;//刻度宽度
-    private float mStartEndTextSize;//起止点的文字大小
-    private int mStartEndTextColor;//起止点的文字颜色
-    private float mDialTextSize;//刻度文字大小
-    private int mDialTextColor;//刻度文字颜色
-    private float mIndicatorSize;//指示 大小
+    private boolean mIsShowEar;
+    private boolean mIsShowDial;
+    private boolean mIsShowDialText;
+    private int mDuration;
+    private int mDialsCount;
+    private float mStartAngel;
+    private float mEndAngel;
+    private float mEarLength;
+    private float mEarWidth;
+    private float mProgressWidth;
+    private float mBgWidth;
+    private float mSecondBgWidth;
+    private int mSecondBgColor;
+    private float mDialLength;
+    private float mDialSpace;
+    private float mDialWidth;
+    private float mStartEndTextSize;
+    private int mStartEndTextColor;
+    private float mDialTextSize;
+    private int mDialTextColor;
+    private float mIndicatorSize;
     private boolean mIndicatorDraggable;
     private int mDialColor;
     private int mEarColor;
@@ -87,440 +76,402 @@ public class DashboardProgressbar extends View {
     private boolean mIsShowBg;
     private ValueAnimator valueAnimator;
     private float radius;
+    private boolean isInterceptEvent = false;
 
     public DashboardProgressbar(Context context) {
         super(context);
-        init();
+        this.init();
     }
 
     public DashboardProgressbar(Context context, AttributeSet attrs) {
         super(context, attrs);
-        init(context, attrs);
+        this.init(context, attrs);
     }
 
     public DashboardProgressbar(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-        init(context, attrs);
+        this.init(context, attrs);
     }
 
-    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-    public DashboardProgressbar(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
-        super(context, attrs, defStyleAttr, defStyleRes);
-        init(context, attrs);
-
-    }
-
-    @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
-        //防止内存泄漏
-        if (valueAnimator != null && valueAnimator.isRunning()) {
-            valueAnimator.cancel();
+        if(this.valueAnimator != null && this.valueAnimator.isRunning()) {
+            this.valueAnimator.cancel();
         }
+
     }
 
     private void init(Context context, AttributeSet attrs) {
         TypedArray ta = context.obtainStyledAttributes(attrs, R.styleable.DashboardProgressbar);
-        mIsShowBg = ta.getBoolean(R.styleable.DashboardProgressbar_dp_isShowBg, true);
-        mIsShowSecondBg = ta.getBoolean(R.styleable.DashboardProgressbar_dp_isShowSecondBg, true);
-        mIsShowDial = ta.getBoolean(R.styleable.DashboardProgressbar_dp_isShowDial, true);
-        mIsShowDialText = ta.getBoolean(R.styleable.DashboardProgressbar_dp_isShowDialText, true);
-        mIsShowEar = ta.getBoolean(R.styleable.DashboardProgressbar_dp_isShowEar, true);
-        mIsShowEarText = ta.getBoolean(R.styleable.DashboardProgressbar_dp_isShowEarText, true);
-        mIsShowIndicator = ta.getBoolean(R.styleable.DashboardProgressbar_dp_isShowIndicator, true);
-        mIndicatorDraggable = ta.getBoolean(R.styleable.DashboardProgressbar_dp_indicatorDraggable, false);
-
-        mBgWidth = ta.getDimension(R.styleable.DashboardProgressbar_dp_bgWidth, 10);
-        mDialWidth = ta.getDimension(R.styleable.DashboardProgressbar_dp_dialWidth, 2);
-        mEarWidth = ta.getDimension(R.styleable.DashboardProgressbar_dp_earWidth, 5);
-        mProgressWidth = ta.getDimension(R.styleable.DashboardProgressbar_dp_progressWidth, 10);
-        mSecondBgWidth = ta.getDimension(R.styleable.DashboardProgressbar_dp_secondBgWidth, 10);
-        mDialLength = ta.getDimension(R.styleable.DashboardProgressbar_dp_dialLength, 30);
-        mEarLength = ta.getDimension(R.styleable.DashboardProgressbar_dp_earLength, 50);
-        mDialSpace = ta.getDimension(R.styleable.DashboardProgressbar_dp_dialSpace, 20);
-        mIndicatorSize = ta.getDimension(R.styleable.DashboardProgressbar_dp_indicatorSize, 20);
-        mDialTextSize = ta.getDimension(R.styleable.DashboardProgressbar_dp_dialTextSize, 20);
-        mStartEndTextSize = ta.getDimension(R.styleable.DashboardProgressbar_dp_earTextSize, 30);
-
-        mDialsCount = ta.getInt(R.styleable.DashboardProgressbar_dp_dialsCount, 20);
-        mDuration = ta.getInt(R.styleable.DashboardProgressbar_dp_duration, 300);
-
-        float startAngel = ta.getFloat(R.styleable.DashboardProgressbar_dp_startAngel, 135);
-        float endAngel = ta.getFloat(R.styleable.DashboardProgressbar_dp_endAngel, 405);
-        setmStartAngel(startAngel);
-        setmEndAngel(endAngel);
-
-        startText = ta.getString(R.styleable.DashboardProgressbar_dp_startText);
-        endText = ta.getString(R.styleable.DashboardProgressbar_dp_endText);
-
-        mBgColor = ta.getColor(R.styleable.DashboardProgressbar_dp_bgColor, Color.GRAY);
-        mDialColor = ta.getColor(R.styleable.DashboardProgressbar_dp_dialColor
-                , Color.argb(255, 100, 255, 255));
-        mEarColor = ta.getColor(R.styleable.DashboardProgressbar_dp_earColor
-                , Color.argb(255, 255, 255, 100));
-        int progressColor = ta.getColor(R.styleable.DashboardProgressbar_dp_progressColor, Color.GREEN);
-        mProgressColors = new ArrayList<>();
-        mProgressColors.add(progressColor);
-        mDialTextColor = ta.getColor(R.styleable.DashboardProgressbar_dp_dialTextColor, Color.GREEN);
-        mStartEndTextColor = ta.getColor(R.styleable.DashboardProgressbar_dp_earTextColor, Color.GREEN);
-        mSecondBgColor = ta.getColor(R.styleable.DashboardProgressbar_dp_secondBgColor
-                , Color.argb(255, 255, 0, 255));
-
-        mIndicatorDrawable = ta.getDrawable(R.styleable.DashboardProgressbar_dp_indicatorDrawable);
-
+        this.mIsShowBg = ta.getBoolean(R.styleable.DashboardProgressbar_dp_isShowBg, true);
+        this.mIsShowSecondBg = ta.getBoolean(R.styleable.DashboardProgressbar_dp_isShowSecondBg, true);
+        this.mIsShowDial = ta.getBoolean(R.styleable.DashboardProgressbar_dp_isShowDial, true);
+        this.mIsShowDialText = ta.getBoolean(R.styleable.DashboardProgressbar_dp_isShowDialText, true);
+        this.mIsShowEar = ta.getBoolean(R.styleable.DashboardProgressbar_dp_isShowEar, true);
+        this.mIsShowEarText = ta.getBoolean(R.styleable.DashboardProgressbar_dp_isShowEarText, true);
+        this.mIsShowIndicator = ta.getBoolean(R.styleable.DashboardProgressbar_dp_isShowIndicator, true);
+        this.mIndicatorDraggable = ta.getBoolean(R.styleable.DashboardProgressbar_dp_indicatorDraggable, false);
+        this.mBgWidth = ta.getDimension(R.styleable.DashboardProgressbar_dp_bgWidth, 10.0F);
+        this.mDialWidth = ta.getDimension(R.styleable.DashboardProgressbar_dp_dialWidth, 2.0F);
+        this.mEarWidth = ta.getDimension(R.styleable.DashboardProgressbar_dp_earWidth, 5.0F);
+        this.mProgressWidth = ta.getDimension(R.styleable.DashboardProgressbar_dp_progressWidth, 10.0F);
+        this.mSecondBgWidth = ta.getDimension(R.styleable.DashboardProgressbar_dp_secondBgWidth, 10.0F);
+        this.mDialLength = ta.getDimension(R.styleable.DashboardProgressbar_dp_dialLength, 30.0F);
+        this.mEarLength = ta.getDimension(R.styleable.DashboardProgressbar_dp_earLength, 50.0F);
+        this.mDialSpace = ta.getDimension(R.styleable.DashboardProgressbar_dp_dialSpace, 20.0F);
+        this.mIndicatorSize = ta.getDimension(R.styleable.DashboardProgressbar_dp_indicatorSize, 20.0F);
+        this.mDialTextSize = ta.getDimension(R.styleable.DashboardProgressbar_dp_dialTextSize, 20.0F);
+        this.mStartEndTextSize = ta.getDimension(R.styleable.DashboardProgressbar_dp_earTextSize, 30.0F);
+        this.mDialsCount = ta.getInt(R.styleable.DashboardProgressbar_dp_dialsCount, 20);
+        this.mDuration = ta.getInt(R.styleable.DashboardProgressbar_dp_duration, 300);
+        float startAngel = ta.getFloat(R.styleable.DashboardProgressbar_dp_startAngel, 135.0F);
+        float endAngel = ta.getFloat(R.styleable.DashboardProgressbar_dp_endAngel, 405.0F);
+        this.setmStartAngel(startAngel);
+        this.setmEndAngel(endAngel);
+        this.startText = ta.getString(R.styleable.DashboardProgressbar_dp_startText);
+        this.endText = ta.getString(R.styleable.DashboardProgressbar_dp_endText);
+        this.mBgColor = ta.getColor(R.styleable.DashboardProgressbar_dp_bgColor, -7829368);
+        this.mDialColor = ta.getColor(R.styleable.DashboardProgressbar_dp_dialColor, Color.argb(255, 100, 255, 255));
+        this.mEarColor = ta.getColor(R.styleable.DashboardProgressbar_dp_earColor, Color.argb(255, 255, 255, 100));
+        int progressColor = ta.getColor(R.styleable.DashboardProgressbar_dp_progressColor, -16711936);
+        this.mProgressColors = new ArrayList();
+        this.mProgressColors.add(Integer.valueOf(progressColor));
+        this.mDialTextColor = ta.getColor(R.styleable.DashboardProgressbar_dp_dialTextColor, -16711936);
+        this.mStartEndTextColor = ta.getColor(R.styleable.DashboardProgressbar_dp_earTextColor, -16711936);
+        this.mSecondBgColor = ta.getColor(R.styleable.DashboardProgressbar_dp_secondBgColor, Color.argb(255, 255, 0, 255));
+        this.mIndicatorDrawable = ta.getDrawable(R.styleable.DashboardProgressbar_dp_indicatorDrawable);
         ta.recycle();
-
-        mProgressRect = new RectF(0, 0, 0, 0);
-        createPaint();
+        this.mProgressRect = new RectF(0.0F, 0.0F, 0.0F, 0.0F);
+        this.createPaint();
     }
 
     private void init() {
-        mIsShowEar = true;
-        mIsShowDial = true;
-        mIsShowIndicator = true;
-        mIsShowEarText = true;
-        mIsShowSecondBg = true;
-        mIsShowBg = true;
-        mStartAngel = (float) (135f / 180 * Math.PI);
-        mEndAngel = (float) (405f / 180 * Math.PI);
-        mStartEndTextSize = 40;
-        mStartEndTextColor = Color.GREEN;
-        mBgColor = Color.GRAY;
-        mSecondBgColor = Color.argb(255, 255, 0, 255);
-        mDialColor = Color.argb(255, 100, 255, 255);
-        mEarColor = Color.argb(255, 255, 255, 100);
-        mDialTextColor = Color.GREEN;
-        mDialLength = 30;
-        mEarLength = 50;
-        mDialSpace = 20;
-        mBgWidth = 10;
-        mDialWidth = 2;
-        mEarWidth = 5;
-        mProgressWidth = 10;
-        mDialsCount = 20;
-        mIndicatorSize = 20;
-        mSecondBgWidth = 10;
-        mProgressColors = new ArrayList<>();
-        mProgressColors.add(Color.GREEN);
-        mProgressColors.add(Color.BLUE);
-        mProgressColors.add(Color.RED);
-        mProgressColors.add(Color.YELLOW);
-        mProgressColors.add(Color.CYAN);
-
-        mIndicatorDrawable = new ShapeDrawable(new OvalShape());
-
-        mProgressRect = new RectF(0, 0, 0, 0);
+        this.mIsShowEar = true;
+        this.mIsShowDial = true;
+        this.mIsShowIndicator = true;
+        this.mIsShowEarText = true;
+        this.mIsShowSecondBg = true;
+        this.mIsShowBg = true;
+        this.mStartAngel = 2.3561945F;
+        this.mEndAngel = 7.0685835F;
+        this.mStartEndTextSize = 40.0F;
+        this.mStartEndTextColor = -16711936;
+        this.mBgColor = -7829368;
+        this.mSecondBgColor = Color.argb(255, 255, 0, 255);
+        this.mDialColor = Color.argb(255, 100, 255, 255);
+        this.mEarColor = Color.argb(255, 255, 255, 100);
+        this.mDialTextColor = -16711936;
+        this.mDialLength = 30.0F;
+        this.mEarLength = 50.0F;
+        this.mDialSpace = 20.0F;
+        this.mBgWidth = 10.0F;
+        this.mDialWidth = 2.0F;
+        this.mEarWidth = 5.0F;
+        this.mProgressWidth = 10.0F;
+        this.mDialsCount = 20;
+        this.mIndicatorSize = 20.0F;
+        this.mSecondBgWidth = 10.0F;
+        this.mProgressColors = new ArrayList();
+        this.mProgressColors.add(Integer.valueOf(-16711936));
+        this.mProgressColors.add(Integer.valueOf(-16776961));
+        this.mProgressColors.add(Integer.valueOf(-65536));
+        this.mProgressColors.add(Integer.valueOf(-256));
+        this.mProgressColors.add(Integer.valueOf(-16711681));
+        this.mIndicatorDrawable = new ShapeDrawable(new OvalShape());
+        this.mProgressRect = new RectF(0.0F, 0.0F, 0.0F, 0.0F);
     }
 
     private void createPaint() {
-        mTextPaint = new Paint();
-        mTextPaint.setTextSize(mStartEndTextSize);
-        mTextPaint.setColor(mStartEndTextColor);
-        mTextPaint.setAntiAlias(true);
-
-        mProgressPaint = new Paint();
-        mProgressPaint.setStyle(Paint.Style.STROKE);
-        mProgressPaint.setStrokeWidth(mProgressWidth);
-        mProgressPaint.setAntiAlias(true);
-        setProgressPaintColor();
-
-        mEarPaint = new Paint();
-        mEarPaint.setColor(mEarColor);
-        mEarPaint.setStrokeWidth(mEarWidth);
-        mEarPaint.setAntiAlias(true);
-
-        mBgPaint = new Paint();
-        mBgPaint.setStyle(Paint.Style.STROKE);
-        mBgPaint.setStrokeWidth(mBgWidth);
-        mBgPaint.setColor(mBgColor);
-        mBgPaint.setAntiAlias(true);
-
-        mSecondBgPaint = new Paint();
-        mSecondBgPaint.setStyle(Paint.Style.STROKE);
-        mSecondBgPaint.setStrokeWidth(mSecondBgWidth);
-        mSecondBgPaint.setColor(mSecondBgColor);
-        mSecondBgPaint.setAntiAlias(true);
-
-        mDialPaint = new Paint();
-        mDialPaint.setColor(mDialColor);
-        mDialPaint.setStrokeWidth(mDialWidth);
-        mDialPaint.setAntiAlias(true);
+        this.mTextPaint = new Paint();
+        this.mTextPaint.setTextSize(this.mStartEndTextSize);
+        this.mTextPaint.setColor(this.mStartEndTextColor);
+        this.mTextPaint.setAntiAlias(true);
+        this.mProgressPaint = new Paint();
+        this.mProgressPaint.setStyle(Style.STROKE);
+        this.mProgressPaint.setStrokeWidth(this.mProgressWidth);
+        this.mProgressPaint.setAntiAlias(true);
+        this.setProgressPaintColor();
+        this.mEarPaint = new Paint();
+        this.mEarPaint.setColor(this.mEarColor);
+        this.mEarPaint.setStrokeWidth(this.mEarWidth);
+        this.mEarPaint.setAntiAlias(true);
+        this.mBgPaint = new Paint();
+        this.mBgPaint.setStyle(Style.STROKE);
+        this.mBgPaint.setStrokeWidth(this.mBgWidth);
+        this.mBgPaint.setColor(this.mBgColor);
+        this.mBgPaint.setAntiAlias(true);
+        this.mSecondBgPaint = new Paint();
+        this.mSecondBgPaint.setStyle(Style.STROKE);
+        this.mSecondBgPaint.setStrokeWidth(this.mSecondBgWidth);
+        this.mSecondBgPaint.setColor(this.mSecondBgColor);
+        this.mSecondBgPaint.setAntiAlias(true);
+        this.mDialPaint = new Paint();
+        this.mDialPaint.setColor(this.mDialColor);
+        this.mDialPaint.setStrokeWidth(this.mDialWidth);
+        this.mDialPaint.setAntiAlias(true);
     }
 
     private void setProgressPaintColor() {
-        if (mProgressColors != null && mProgressColors.size() > 0) {
-            if (mProgressColors.size() > 1) {
-                int[] colors = new int[mProgressColors.size()];
-                float[] positions = new float[mProgressColors.size()];
-                float step = (float) ((mEndAngel - mStartAngel) / (mProgressColors.size()) / 2 / Math.PI);
-                for (int i = 0; i < mProgressColors.size(); i++) {
-                    colors[i] = mProgressColors.get(i);
-                    positions[i] = step * i;
+        if(this.mProgressColors != null && this.mProgressColors.size() > 0) {
+            if(this.mProgressColors.size() > 1) {
+                int[] colors = new int[this.mProgressColors.size()];
+                float[] positions = new float[this.mProgressColors.size()];
+                float step = (float)((double)((this.mEndAngel - this.mStartAngel) / (float)this.mProgressColors.size() / 2.0F) / 3.141592653589793D);
+
+                for(int i = 0; i < this.mProgressColors.size(); ++i) {
+                    colors[i] = ((Integer)this.mProgressColors.get(i)).intValue();
+                    positions[i] = step * (float)i;
                 }
-                SweepGradient sweepGradient = new SweepGradient(0, 0, colors, positions);
-                mProgressPaint.setShader(sweepGradient);
+
+                SweepGradient sweepGradient = new SweepGradient(0.0F, 0.0F, colors, positions);
+                this.mProgressPaint.setShader(sweepGradient);
                 Matrix matrix = new Matrix();
-                if (sweepGradient.getLocalMatrix(matrix)) {
-                    matrix.setRotate((float) (mStartAngel * 180 / Math.PI) - 1);
+                if(sweepGradient.getLocalMatrix(matrix)) {
+                    matrix.setRotate((float)((double)(this.mStartAngel * 180.0F) / 3.141592653589793D) - 1.0F);
                 } else {
-                    matrix.setRotate((float) (mStartAngel * 180 / Math.PI) - 1);
+                    matrix.setRotate((float)((double)(this.mStartAngel * 180.0F) / 3.141592653589793D) - 1.0F);
                     sweepGradient.setLocalMatrix(matrix);
                 }
             } else {
-                mProgressPaint.setColor(mProgressColors.get(0));
+                this.mProgressPaint.setColor(((Integer)this.mProgressColors.get(0)).intValue());
             }
         }
+
     }
 
-
-    @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         int heightMode = MeasureSpec.getMode(heightMeasureSpec);
         int heightSize = MeasureSpec.getSize(heightMeasureSpec);
         int widthMode = MeasureSpec.getMode(widthMeasureSpec);
         int widthSize = MeasureSpec.getSize(widthMeasureSpec);
-        if (widthMode == MeasureSpec.AT_MOST) {
-            setMeasuredDimension(500, 500);
-        } else if (heightMode == MeasureSpec.AT_MOST) {
-            setMeasuredDimension(widthSize, widthSize);
+        if(widthMode == -2147483648) {
+            this.setMeasuredDimension(500, 500);
+        } else if(heightMode == -2147483648) {
+            this.setMeasuredDimension(widthSize, widthSize);
         } else {
-            setMeasuredDimension(widthSize, heightSize);
+            this.setMeasuredDimension(widthSize, heightSize);
         }
+
     }
 
-    /**
-     * 1.绘制起始、终止点的耳朵
-     * 2.绘制刻度及其文字
-     * 3.绘制起始终止点的文字
-     * 4.绘制背景,第二背景
-     * 5.绘制progress
-     * 6.绘制indicator
-     *
-     * @param canvas 画布
-     */
-    @Override
     protected void onDraw(Canvas canvas) {
-        int width = getMeasuredWidth();
-        int height = getMeasuredHeight();
-        float progressAngel = mStartAngel + (mEndAngel - mStartAngel) * mProgress;//弧度制的
-        float startAngel360 = (float) (mStartAngel * 180 / Math.PI);
-        float endAngel360 = (float) (mEndAngel * 180 / Math.PI);
-        canvas.translate(width / 2, height / 2);//将画布的中间作为0，0点
-        if (mIsShowDial) {
-            if (mIsShowEar) {
-                radius = Math.min(width, height) / 2 - Math.max(mDialLength + mDialSpace, mEarLength);
+        int width = this.getMeasuredWidth();
+        int height = this.getMeasuredHeight();
+        float progressAngel = this.mStartAngel + (this.mEndAngel - this.mStartAngel) * this.mProgress;
+        float startAngel360 = (float)((double)(this.mStartAngel * 180.0F) / 3.141592653589793D);
+        float endAngel360 = (float)((double)(this.mEndAngel * 180.0F) / 3.141592653589793D);
+        canvas.translate((float)(width / 2), (float)(height / 2));
+        if(this.mIsShowDial) {
+            if(this.mIsShowEar) {
+                this.radius = (float)(Math.min(width, height) / 2) - Math.max(this.mDialLength + this.mDialSpace, this.mEarLength);
             } else {
-                radius = Math.min(width, height) / 2 - mDialLength + mDialSpace;
+                this.radius = (float)(Math.min(width, height) / 2) - this.mDialLength + this.mDialSpace;
             }
+        } else if(this.mIsShowEar) {
+            this.radius = (float)(Math.min(width, height) / 2) - this.mEarLength;
         } else {
-            if (mIsShowEar) {
-                radius = Math.min(width, height) / 2 - mEarLength;
-            } else {
-                radius = Math.min(width, height) / 2;
-            }
+            this.radius = (float)(Math.min(width, height) / 2);
         }
-        mProgressRect.set(-radius, -radius, radius, radius);
 
+        this.mProgressRect.set(-this.radius, -this.radius, this.radius, this.radius);
+        float startEarX1 = 0.0F;
+        float startEarY1 = 0.0F;
+        float startEarX2 = 0.0F;
+        float startEarY2 = 0.0F;
+        float endEarX1 = 0.0F;
+        float endEarY1 = 0.0F;
+        float endEarX2 = 0.0F;
+        float endEarY2 = 0.0F;
+        float step;
+        if(this.mIsShowEar || this.mIsShowEarText) {
+            step = this.mEarWidth / 2.0F / this.radius;
+            startEarX1 = (float)Math.cos((double)(this.mStartAngel + step)) * this.radius;
+            startEarY1 = (float)Math.sin((double)(this.mStartAngel + step)) * this.radius;
+            startEarX2 = (float)Math.cos((double)(this.mStartAngel + step)) * (this.radius + this.mEarLength);
+            startEarY2 = (float)Math.sin((double)(this.mStartAngel + step)) * (this.radius + this.mEarLength);
+            endEarX1 = (float)Math.cos((double)(this.mEndAngel - step)) * this.radius;
+            endEarY1 = (float)Math.sin((double)(this.mEndAngel - step)) * this.radius;
+            endEarX2 = (float)Math.cos((double)(this.mEndAngel - step)) * (this.radius + this.mEarLength);
+            endEarY2 = (float)Math.sin((double)(this.mEndAngel - step)) * (this.radius + this.mEarLength);
+        }
 
-        //        1.绘制起始、终止点的耳朵  angel弧度制 以 cos(startAngel)*radius为起始x  sin(startAngel)*radius为起始y
-        //        以 cos(startAngel)*(radius+earLength)为起始x  sin(startAngel)*(radius+earLength)为起始y
-        float startEarX1 = 0, startEarY1 = 0, startEarX2 = 0, startEarY2 = 0, endEarX1 = 0, endEarY1 = 0, endEarX2 = 0, endEarY2 = 0;
-        if (mIsShowEar || mIsShowEarText) {
-            //角度增量为  earWidth/(2PI*radius)*2PI/2 -> earWidth/radius/2,减少计算量
-            float angelPP = mEarWidth / 2 / radius;
-            startEarX1 = (float) Math.cos(mStartAngel + angelPP) * radius;
-            startEarY1 = (float) Math.sin(mStartAngel + angelPP) * radius;
-            startEarX2 = (float) Math.cos(mStartAngel + angelPP) * (radius + mEarLength);
-            startEarY2 = (float) Math.sin(mStartAngel + angelPP) * (radius + mEarLength);
-            endEarX1 = (float) Math.cos(mEndAngel - angelPP) * radius;
-            endEarY1 = (float) Math.sin(mEndAngel - angelPP) * radius;
-            endEarX2 = (float) Math.cos(mEndAngel - angelPP) * (radius + mEarLength);
-            endEarY2 = (float) Math.sin(mEndAngel - angelPP) * (radius + mEarLength);
-        }
-        if (mIsShowEar) {
-            if (mProgress <= 0) {
-                mEarPaint.setColor(mEarColor);
-                canvas.drawLine(startEarX1, startEarY1, startEarX2, startEarY2, mEarPaint);
-                canvas.drawLine(endEarX1, endEarY1, endEarX2, endEarY2, mEarPaint);
-            } else if (mProgress >= 1) {
-                mEarPaint.setColor(mProgressColors.get(mProgressColors.size() - 1));
-                canvas.drawLine(endEarX1, endEarY1, endEarX2, endEarY2, mEarPaint);
-                mEarPaint.setColor(mProgressColors.get(0));
-                canvas.drawLine(startEarX1, startEarY1, startEarX2, startEarY2, mEarPaint);
+        if(this.mIsShowEar) {
+            if(this.mProgress <= 0.0F) {
+                this.mEarPaint.setColor(this.mEarColor);
+                canvas.drawLine(startEarX1, startEarY1, startEarX2, startEarY2, this.mEarPaint);
+                canvas.drawLine(endEarX1, endEarY1, endEarX2, endEarY2, this.mEarPaint);
+            } else if(this.mProgress >= 1.0F) {
+                this.mEarPaint.setColor(((Integer)this.mProgressColors.get(this.mProgressColors.size() - 1)).intValue());
+                canvas.drawLine(endEarX1, endEarY1, endEarX2, endEarY2, this.mEarPaint);
+                this.mEarPaint.setColor(((Integer)this.mProgressColors.get(0)).intValue());
+                canvas.drawLine(startEarX1, startEarY1, startEarX2, startEarY2, this.mEarPaint);
             } else {
-                mEarPaint.setColor(mProgressColors.get(0));
-                canvas.drawLine(startEarX1, startEarY1, startEarX2, startEarY2, mEarPaint);
-                mEarPaint.setColor(mEarColor);
-                canvas.drawLine(endEarX1, endEarY1, endEarX2, endEarY2, mEarPaint);
+                this.mEarPaint.setColor(((Integer)this.mProgressColors.get(0)).intValue());
+                canvas.drawLine(startEarX1, startEarY1, startEarX2, startEarY2, this.mEarPaint);
+                this.mEarPaint.setColor(this.mEarColor);
+                canvas.drawLine(endEarX1, endEarY1, endEarX2, endEarY2, this.mEarPaint);
             }
         }
-        //        2.绘制起始终止点的文字
-        if (mIsShowEarText) {
-            if (!TextUtils.isEmpty(startText)) {
-                float startTextWidth = mTextPaint.measureText(startText);
-                float startTextX = startEarX2 - startTextWidth;
-                canvas.drawText(startText, Math.max(-width / 2, startTextX), startEarY2 + 50, mTextPaint);
+
+        if(this.mIsShowEarText) {
+            float endTextX;
+            if(!TextUtils.isEmpty(this.startText)) {
+                step = this.mTextPaint.measureText(this.startText);
+                endTextX = startEarX2 - step;
+                canvas.drawText(this.startText, Math.max((float)(-width / 2), endTextX), startEarY2 + 50.0F, this.mTextPaint);
             }
-            if (!TextUtils.isEmpty(endText)) {
-                float endTextWidth = mTextPaint.measureText(endText);
-                float endTextX = width / 2 - endTextWidth;
-                canvas.drawText(endText, Math.min(endTextX, endEarX2), endEarY2 + 50, mTextPaint);
+
+            if(!TextUtils.isEmpty(this.endText)) {
+                step = this.mTextPaint.measureText(this.endText);
+                endTextX = (float)(width / 2) - step;
+                canvas.drawText(this.endText, Math.min(endTextX, endEarX2), endEarY2 + 50.0F, this.mTextPaint);
             }
         }
-        //        3.绘制刻度及其文字
-        if (mIsShowDial && mDialsCount > 0) {
-            float step = (mEndAngel - mStartAngel) / (mDialsCount + 1);
-            for (int i = 0; i < mDialsCount; i++) {
-                float dialX1, dialY1, dialX2, dialY2;
-                float currentAngel = mStartAngel + step * (i + 1);
-                dialX1 = (float) Math.cos(currentAngel) * (radius + mDialSpace);
-                dialY1 = (float) Math.sin(currentAngel) * (radius + mDialSpace);
-                dialX2 = (float) Math.cos(currentAngel) * (radius + mDialSpace + mDialLength);
-                dialY2 = (float) Math.sin(currentAngel) * (radius + mDialSpace + mDialLength);
-                if (currentAngel <= progressAngel) {
-                    if (mProgressPaint.getShader() == null) {
-                        mDialPaint.setColor(mProgressColors.get(0));
-                        mEarPaint.setShader(null);
+
+        int progressY;
+        if(this.mIsShowDial && this.mDialsCount > 0) {
+            step = (this.mEndAngel - this.mStartAngel) / (float)(this.mDialsCount + 1);
+
+            for(progressY = 0; progressY < this.mDialsCount; ++progressY) {
+                float currentAngel = this.mStartAngel + step * (float)(progressY + 1);
+                float dialX1 = (float)Math.cos((double)currentAngel) * (this.radius + this.mDialSpace);
+                float dialY1 = (float)Math.sin((double)currentAngel) * (this.radius + this.mDialSpace);
+                float dialX2 = (float)Math.cos((double)currentAngel) * (this.radius + this.mDialSpace + this.mDialLength);
+                float dialY2 = (float)Math.sin((double)currentAngel) * (this.radius + this.mDialSpace + this.mDialLength);
+                if(currentAngel <= progressAngel) {
+                    if(this.mProgressPaint.getShader() == null) {
+                        this.mDialPaint.setColor(((Integer)this.mProgressColors.get(0)).intValue());
+                        this.mEarPaint.setShader((Shader)null);
                     } else {
-                        mDialPaint.setShader(mProgressPaint.getShader());
+                        this.mDialPaint.setShader(this.mProgressPaint.getShader());
                     }
-                    canvas.drawLine(dialX1, dialY1, dialX2, dialY2, mDialPaint);
+
+                    canvas.drawLine(dialX1, dialY1, dialX2, dialY2, this.mDialPaint);
                 } else {
-                    mDialPaint.setColor(mDialColor);
-                    mDialPaint.setShader(null);
-                    canvas.drawLine(dialX1, dialY1, dialX2, dialY2, mDialPaint);
+                    this.mDialPaint.setColor(this.mDialColor);
+                    this.mDialPaint.setShader((Shader)null);
+                    canvas.drawLine(dialX1, dialY1, dialX2, dialY2, this.mDialPaint);
                 }
             }
         }
-        //4.绘制圆环，作为背景
-        if (mIsShowBg) {
-            canvas.drawCircle(0, 0, radius, mBgPaint);
-        }
-        if (mIsShowSecondBg) {
-            canvas.drawArc(mProgressRect, startAngel360, endAngel360 - startAngel360, false, mSecondBgPaint);
+
+        if(this.mIsShowBg) {
+            canvas.drawCircle(0.0F, 0.0F, this.radius, this.mBgPaint);
         }
 
-        //        5.绘制progress
-        canvas.drawArc(mProgressRect, startAngel360, (float) (progressAngel / Math.PI * 180) - startAngel360
-                , false, mProgressPaint);
-        //        6.绘制indicator
-        if (mIsShowIndicator && mIndicatorDrawable != null) {
+        if(this.mIsShowSecondBg) {
+            canvas.drawArc(this.mProgressRect, startAngel360, endAngel360 - startAngel360, false, this.mSecondBgPaint);
+        }
 
-            int progressX, progressY;
-            progressX = (int) (Math.cos(progressAngel) * radius);
-            progressY = (int) (Math.sin(progressAngel) * radius);
-            if (mIndicatorSize <= 0) {
-                mIndicatorDrawable.setBounds(progressX - mIndicatorDrawable.getIntrinsicWidth() / 2
-                        , progressY - mIndicatorDrawable.getIntrinsicHeight() / 2
-                        , progressX + mIndicatorDrawable.getIntrinsicWidth() / 2
-                        , progressY + mIndicatorDrawable.getIntrinsicHeight() / 2);
+        canvas.drawArc(this.mProgressRect, startAngel360, (float)((double)progressAngel / 3.141592653589793D * 180.0D) - startAngel360, false, this.mProgressPaint);
+        if(this.mIsShowIndicator && this.mIndicatorDrawable != null) {
+            int progressX = (int)(Math.cos((double)progressAngel) * (double)this.radius);
+            progressY = (int)(Math.sin((double)progressAngel) * (double)this.radius);
+            if(this.mIndicatorSize <= 0.0F) {
+                this.mIndicatorDrawable.setBounds(progressX - this.mIndicatorDrawable.getIntrinsicWidth() / 2, progressY - this.mIndicatorDrawable.getIntrinsicHeight() / 2, progressX + this.mIndicatorDrawable.getIntrinsicWidth() / 2, progressY + this.mIndicatorDrawable.getIntrinsicHeight() / 2);
             } else {
-                mIndicatorDrawable.setBounds((int) (progressX - mIndicatorSize / 2)
-                        , (int) (progressY - mIndicatorSize / 2)
-                        , (int) (progressX + mIndicatorSize / 2)
-                        , (int) (progressY + mIndicatorSize / 2));
+                this.mIndicatorDrawable.setBounds((int)((float)progressX - this.mIndicatorSize / 2.0F), (int)((float)progressY - this.mIndicatorSize / 2.0F), (int)((float)progressX + this.mIndicatorSize / 2.0F), (int)((float)progressY + this.mIndicatorSize / 2.0F));
             }
-            mIndicatorDrawable.draw(canvas);
+
+            this.mIndicatorDrawable.draw(canvas);
         }
+
     }
 
-    private boolean isInterceptEvent = false;
-
-    @SuppressLint("ClickableViewAccessibility")
-    @Override
+    @SuppressLint({"ClickableViewAccessibility"})
     public boolean onTouchEvent(MotionEvent event) {
-        if (!mIndicatorDraggable) {
+        if(!this.mIndicatorDraggable) {
             return super.onTouchEvent(event);
-        }
-        switch (event.getAction()) {
-            case MotionEvent.ACTION_DOWN:
-                float progressX, progressY;
-                float indicatorAngel = mStartAngel + (mEndAngel - mStartAngel) * mProgress;
-                progressX = (float) Math.cos(indicatorAngel) * radius;
-                progressY = (float) Math.sin(indicatorAngel) * radius;
-                float downX = event.getX() - getMeasuredWidth() / 2;
-                float downY = event.getY() - getMeasuredHeight() / 2;
-                isInterceptEvent = Math.pow(downX - progressX, 2) + Math.pow(downY - progressY, 2)
-                        < mIndicatorSize * mIndicatorSize;
-                break;
-            case MotionEvent.ACTION_MOVE:
-                if (isInterceptEvent) {
-                    float realY = event.getY() - getMeasuredHeight() / 2;
-                    float realX = event.getX() - getMeasuredWidth() / 2;
-                    double angle = Math.atan(realY / realX);
-                    if (realX < 0) {
-                        angle += Math.PI;
-                    } else {
-                        angle += Math.PI * 2;
+        } else {
+            switch(event.getAction()) {
+                case 0:
+                    float indicatorAngel = this.mStartAngel + (this.mEndAngel - this.mStartAngel) * this.mProgress;
+                    float progressX = (float)Math.cos((double)indicatorAngel) * this.radius;
+                    float progressY = (float)Math.sin((double)indicatorAngel) * this.radius;
+                    float downX = event.getX() - (float)(this.getMeasuredWidth() / 2);
+                    float downY = event.getY() - (float)(this.getMeasuredHeight() / 2);
+                    this.isInterceptEvent = Math.pow((double)(downX - progressX), 2.0D) + Math.pow((double)(downY - progressY), 2.0D) < (double)(this.mIndicatorSize * this.mIndicatorSize);
+                    break;
+                case 1:
+                    if(this.isInterceptEvent) {
+                        this.refreshProgress(false);
                     }
-                    mProgress = (float) (angle - mStartAngel) / (mEndAngel - mStartAngel);
-                    invalidate();
-                }
-                break;
-            case MotionEvent.ACTION_UP:
-                if (isInterceptEvent) {
-                    refreshProgress(false);
-                }
-                break;
+                    break;
+                case 2:
+                    if(this.isInterceptEvent) {
+                        float realY = event.getY() - (float)(this.getMeasuredHeight() / 2);
+                        float realX = event.getX() - (float)(this.getMeasuredWidth() / 2);
+                        double angle = Math.atan((double)(realY / realX));
+                        if(realX < 0.0F) {
+                            angle += 3.141592653589793D;
+                        } else {
+                            angle += 6.283185307179586D;
+                        }
+
+                        this.mProgress = (float)(angle - (double)this.mStartAngel) / (this.mEndAngel - this.mStartAngel);
+                        this.invalidate();
+                    }
+            }
+
+            return this.isInterceptEvent || super.onTouchEvent(event);
         }
-        return isInterceptEvent || super.onTouchEvent(event);
     }
 
-    public void setmAnimationListener(OnDataUpdateListener mAnimationListener) {
+    public void setmAnimationListener(DashboardProgressbar.OnDataUpdateListener mAnimationListener) {
         this.mAnimationListener = mAnimationListener;
     }
 
     public void setDialTexts(List<String> dialTexts) {
         this.dialTexts = dialTexts;
-        invalidate();
+        this.invalidate();
     }
 
     public void setmProgressColors(ArrayList<Integer> mProgressColors) {
         this.mProgressColors = mProgressColors;
-        setProgressPaintColor();
-        invalidate();
+        this.setProgressPaintColor();
+        this.invalidate();
     }
 
     public void addProgressColor(int progressColor) {
-        mProgressColors.add(progressColor);
-        setProgressPaintColor();
-        invalidate();
+        this.mProgressColors.add(Integer.valueOf(progressColor));
+        this.setProgressPaintColor();
+        this.invalidate();
     }
 
     public void setmBgColor(int mBgColor) {
         this.mBgColor = mBgColor;
-        mBgPaint.setColor(mBgColor);
-        invalidate();
+        this.mBgPaint.setColor(mBgColor);
+        this.invalidate();
     }
 
     public void setmIndicatorDrawable(Drawable mIndicatorDrawable) {
         this.mIndicatorDrawable = mIndicatorDrawable;
-        invalidate();
+        this.invalidate();
     }
 
     public void setmIsShowIndicator(boolean mIsShowIndicator) {
         this.mIsShowIndicator = mIsShowIndicator;
-        invalidate();
+        this.invalidate();
     }
 
     public void setmIsShowEarText(boolean mIsShowEarText) {
         this.mIsShowEarText = mIsShowEarText;
-        invalidate();
+        this.invalidate();
     }
 
     public void setmIsShowEar(boolean mIsShowEar) {
         this.mIsShowEar = mIsShowEar;
-        invalidate();
+        this.invalidate();
     }
 
     public void setmIsShowDial(boolean mIsShowDial) {
         this.mIsShowDial = mIsShowDial;
-        invalidate();
+        this.invalidate();
     }
 
     public void setmIsShowDialText(boolean mIsShowDialText) {
         this.mIsShowDialText = mIsShowDialText;
-        invalidate();
+        this.invalidate();
     }
 
     public void setmDuration(int mDuration) {
@@ -529,215 +480,209 @@ public class DashboardProgressbar extends View {
 
     public void setmDialsCount(int mDialsCount) {
         this.mDialsCount = mDialsCount;
-        invalidate();
+        this.invalidate();
     }
 
     public void setmStartAngel(float mStartAngel) {
-        this.mStartAngel = (float) (mStartAngel / 180 * Math.PI);
-        invalidate();
+        this.mStartAngel = (float)((double)(mStartAngel / 180.0F) * 3.141592653589793D);
+        this.invalidate();
     }
 
     public void setmEndAngel(float mEndAngel) {
-        this.mEndAngel = (float) (mEndAngel / 180 * Math.PI);
-        invalidate();
+        this.mEndAngel = (float)((double)(mEndAngel / 180.0F) * 3.141592653589793D);
+        this.invalidate();
     }
 
     public void setmEarLength(float mEarLength) {
         this.mEarLength = mEarLength;
-        invalidate();
+        this.invalidate();
     }
 
     public void setmEarWidth(float mEarWidth) {
         this.mEarWidth = mEarWidth;
-        mEarPaint.setStrokeWidth(mEarWidth);
-        invalidate();
+        this.mEarPaint.setStrokeWidth(mEarWidth);
+        this.invalidate();
     }
 
     public void setmProgressWidth(float mProgressWidth) {
         this.mProgressWidth = mProgressWidth;
-        mProgressPaint.setStrokeWidth(mProgressWidth);
-        invalidate();
+        this.mProgressPaint.setStrokeWidth(mProgressWidth);
+        this.invalidate();
     }
 
     public void setmBgWidth(float mBgWidth) {
         this.mBgWidth = mBgWidth;
-        mBgPaint.setStrokeWidth(mBgWidth);
-        invalidate();
+        this.mBgPaint.setStrokeWidth(mBgWidth);
+        this.invalidate();
     }
 
     public void setmSecondBgWidth(float mSecondBgWidth) {
         this.mSecondBgWidth = mSecondBgWidth;
-        mSecondBgPaint.setStrokeWidth(mSecondBgWidth);
-        invalidate();
+        this.mSecondBgPaint.setStrokeWidth(mSecondBgWidth);
+        this.invalidate();
     }
 
     public void setmSecondBgColor(int mSecondBgColor) {
         this.mSecondBgColor = mSecondBgColor;
-        mSecondBgPaint.setColor(mSecondBgColor);
-        invalidate();
+        this.mSecondBgPaint.setColor(mSecondBgColor);
+        this.invalidate();
     }
 
     public void setmDialLength(float mDialLength) {
         this.mDialLength = mDialLength;
-        invalidate();
+        this.invalidate();
     }
 
     public void setmDialSpace(float mDialSpace) {
         this.mDialSpace = mDialSpace;
-        invalidate();
+        this.invalidate();
     }
 
     public void setmDialWidth(float mDialWidth) {
         this.mDialWidth = mDialWidth;
-        mDialPaint.setStrokeWidth(mDialWidth);
-        invalidate();
+        this.mDialPaint.setStrokeWidth(mDialWidth);
+        this.invalidate();
     }
 
     public void setmStartEndTextSize(float mStartEndTextSize) {
         this.mStartEndTextSize = mStartEndTextSize;
-        mTextPaint.setTextSize(mStartEndTextSize);
-        invalidate();
+        this.mTextPaint.setTextSize(mStartEndTextSize);
+        this.invalidate();
     }
 
     public void setmStartEndTextColor(int mStartEndTextColor) {
         this.mStartEndTextColor = mStartEndTextColor;
-        mTextPaint.setColor(mStartEndTextColor);
-        invalidate();
+        this.mTextPaint.setColor(mStartEndTextColor);
+        this.invalidate();
     }
 
     public void setmDialTextSize(float mDialTextSize) {
         this.mDialTextSize = mDialTextSize;
-        invalidate();
+        this.invalidate();
     }
 
     public void setmDialTextColor(int mDialTextColor) {
         this.mDialTextColor = mDialTextColor;
-        mDialPaint.setColor(mDialTextColor);
-        invalidate();
+        this.mDialPaint.setColor(mDialTextColor);
+        this.invalidate();
     }
 
     public void setmIndicatorSize(float mIndicatorSize) {
         this.mIndicatorSize = mIndicatorSize;
-        invalidate();
+        this.invalidate();
     }
 
     public void setmDialColor(int mDialColor) {
         this.mDialColor = mDialColor;
-        if (mDialPaint != null) {
-            mDialPaint.setColor(mDialColor);
-            invalidate();
+        if(this.mDialPaint != null) {
+            this.mDialPaint.setColor(mDialColor);
+            this.invalidate();
         }
+
     }
 
     public void setmEarColor(int mEarColor) {
         this.mEarColor = mEarColor;
-        mEarPaint.setColor(mEarColor);
-        invalidate();
+        this.mEarPaint.setColor(mEarColor);
+        this.invalidate();
     }
 
     public void setmIsShowSecondBg(boolean mIsShowSecondBg) {
         this.mIsShowSecondBg = mIsShowSecondBg;
-        invalidate();
+        this.invalidate();
     }
 
     public void setmIsShowBg(boolean mIsShowBg) {
         this.mIsShowBg = mIsShowBg;
-        invalidate();
+        this.invalidate();
     }
 
     public void setProgressData(double max, double current) {
         this.mTotalData = max;
         this.mCurrentData = current;
-        refreshProgress(true);
+        this.refreshProgress(true);
     }
 
     public void setmCurrentData(double currentData) {
         this.mCurrentData = currentData;
-        refreshProgress(true);
+        this.refreshProgress(true);
     }
 
     public void setmTotalData(double totalData) {
         this.mTotalData = totalData;
-        refreshProgress(true);
+        this.refreshProgress(true);
     }
 
     private void refreshProgress(boolean restart) {
         float toProgress;
-        if (mTotalData <= 0 || mCurrentData <= 0) {
-            toProgress = 0f;
-        } else {
-            toProgress = (float) (mCurrentData / mTotalData);
-            if (toProgress > 1.05) {
-                toProgress = 1.05f;
+        if(this.mTotalData > 0.0D && this.mCurrentData > 0.0D) {
+            toProgress = (float)(this.mCurrentData / this.mTotalData);
+            if((double)toProgress > 1.05D) {
+                toProgress = 1.05F;
             }
+        } else {
+            toProgress = 0.0F;
         }
-        animateTo(toProgress, restart);
+
+        this.animateTo(toProgress, restart);
     }
 
     public void setEndText(String endText) {
         this.endText = endText;
-        invalidate();
+        this.invalidate();
     }
 
     public void setStartText(String startText) {
         this.startText = startText;
-        invalidate();
+        this.invalidate();
     }
 
     private void animateTo(final float toProgress, final boolean restart) {
-        float startProgress = mProgress;
-        if (getMeasuredWidth() <= 0) {
-            mProgress = toProgress;
-            return;
-        }
-        if (valueAnimator != null && valueAnimator.isRunning()) {
-            valueAnimator.cancel();
-        }
-        if (restart) {
-            valueAnimator = ValueAnimator.ofFloat(startProgress, 0, toProgress);
-            valueAnimator.setInterpolator(new OvershootInterpolator(1.02f));
-            valueAnimator.setDuration(mDuration);
+        float startProgress = this.mProgress;
+        if(this.getMeasuredWidth() <= 0) {
+            this.mProgress = toProgress;
         } else {
-            valueAnimator = ValueAnimator.ofFloat(startProgress, toProgress);
-            valueAnimator.setInterpolator(new BounceInterpolator());
-            valueAnimator.setDuration(500);
-        }
-        valueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-            @Override
-            public void onAnimationUpdate(ValueAnimator animation) {
-                mProgress = (float) animation.getAnimatedValue();
-                postInvalidate();
-                if (mAnimationListener != null) {
-                    if (restart) {
-                        mAnimationListener.onDataUpdate((float) animation.getAnimatedValue());
+            if(this.valueAnimator != null && this.valueAnimator.isRunning()) {
+                this.valueAnimator.cancel();
+            }
+
+            if(restart) {
+                this.valueAnimator = ValueAnimator.ofFloat(new float[]{startProgress, 0.0F, toProgress});
+                this.valueAnimator.setInterpolator(new OvershootInterpolator(1.02F));
+                this.valueAnimator.setDuration((long)this.mDuration);
+            } else {
+                this.valueAnimator = ValueAnimator.ofFloat(new float[]{startProgress, toProgress});
+                this.valueAnimator.setInterpolator(new BounceInterpolator());
+                this.valueAnimator.setDuration(500L);
+            }
+
+            this.valueAnimator.addUpdateListener(new AnimatorUpdateListener() {
+                public void onAnimationUpdate(ValueAnimator animation) {
+                    DashboardProgressbar.this.mProgress = ((Float)animation.getAnimatedValue()).floatValue();
+                    DashboardProgressbar.this.postInvalidate();
+                    if(DashboardProgressbar.this.mAnimationListener != null && restart) {
+                        DashboardProgressbar.this.mAnimationListener.onDataUpdate(((Float)animation.getAnimatedValue()).floatValue());
                     }
+
                 }
-            }
-        });
-        valueAnimator.addListener(new AnimatorListenerAdapter() {
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                mProgress = toProgress;
-                invalidate();
-                if (mAnimationListener != null) {
-                    mAnimationListener.onAnimComplete();
+            });
+            this.valueAnimator.addListener(new AnimatorListenerAdapter() {
+                public void onAnimationEnd(Animator animation) {
+                    DashboardProgressbar.this.mProgress = toProgress;
+                    DashboardProgressbar.this.invalidate();
+                    if(DashboardProgressbar.this.mAnimationListener != null) {
+                        DashboardProgressbar.this.mAnimationListener.onAnimComplete();
+                    }
+
                 }
-            }
-        });
-        valueAnimator.start();
+            });
+            this.valueAnimator.start();
+        }
     }
 
     public interface OnDataUpdateListener {
-        /**
-         * 0f-1.0f
-         *
-         * @param progress 进度
-         */
-        void onDataUpdate(float progress);
+        void onDataUpdate(float var1);
 
-        /**
-         * 动画走完
-         */
         void onAnimComplete();
     }
 }
